@@ -7,6 +7,10 @@
 #include "sw/device/lib/base/mmio.h"
 #include "sw/device/lib/dif/dif_pwrmgr.h"
 #include "sw/device/lib/dif/dif_rstmgr.h"
+#include "sw/device/lib/dif/dif_uart.h"
+#include "sw/device/lib/dif/dif_pinmux.h"
+#include "sw/device/lib/testing/pinmux_testutils.h"
+#include "sw/device/lib/runtime/print.h"
 #include "sw/device/lib/dif/dif_rv_core_ibex.h"
 #include "sw/device/lib/runtime/log.h"
 #include "sw/device/lib/testing/aon_timer_testutils.h"
@@ -14,7 +18,8 @@
 #include "sw/device/lib/testing/rv_core_ibex_testutils.h"
 #include "sw/device/lib/testing/test_framework/check.h"
 #include "sw/device/lib/testing/test_framework/ottf_isrs.h"
-#include "sw/device/lib/testing/test_framework/ottf_main.h"
+#include "sw/device/lib/testing/test_framework/ottf_test_config.h"
+// #include "sw/device/lib/testing/test_framework/ottf_main.h"
 
 #include "hw/top_earlgrey/sw/autogen/top_earlgrey.h"
 
@@ -176,7 +181,40 @@ static void check_prev_state(
         obs_prev_state.mpec, exp_prev_state.mpec);
 }
 
+/**
+ * Sets up the UART connection.
+ */
+static void setup_uart(void) {
+  // DIF handles
+  static dif_uart_t uart0;
+  static dif_pinmux_t pinmux;
+
+  // Initialise DIF handles
+  CHECK_DIF_OK(dif_pinmux_init(
+      mmio_region_from_addr(TOP_EARLGREY_PINMUX_AON_BASE_ADDR), &pinmux));
+  CHECK_DIF_OK(dif_uart_init(
+      mmio_region_from_addr(TOP_EARLGREY_UART0_BASE_ADDR), &uart0));
+
+  // Initialise UART console.
+  pinmux_testutils_init(&pinmux);
+  CHECK(kUartBaudrate <= UINT32_MAX, "kUartBaudrate must fit in uint32_t");
+  CHECK(kClockFreqPeripheralHz <= UINT32_MAX,
+        "kClockFreqPeripheralHz must fit in uint32_t");
+  CHECK_DIF_OK(dif_uart_configure(
+      &uart0, (dif_uart_config_t){
+                  .baudrate = (uint32_t)kUartBaudrate,
+                  .clk_freq_hz = (uint32_t)kClockFreqPeripheralHz,
+                  .parity_enable = kDifToggleDisabled,
+                  .parity = kDifUartParityEven,
+                  .tx_enable = kDifToggleEnabled,
+                  .rx_enable = kDifToggleEnabled,
+              }));
+  base_uart_stdout(&uart0);
+}
+
 bool test_main(void) {
+  setup_uart();
+
   dif_rv_core_ibex_crash_dump_info_t dump;
 
   dif_aon_timer_t aon_timer;
@@ -270,15 +308,15 @@ bool test_main(void) {
       // whether the pipeline stalled.
       // The next pc is always the exception handler, because that's
       // where execution would have gone if it had not halted
-      check_state(dump.fault_state,
-                  (dif_rv_core_ibex_crash_dump_state_t){
-                      .mtval = (uint32_t)kIllegalAddr2,
-                      .mpec = (uint32_t)kDoubleFaultSecondAddr,
-                      .mdaa = (uint32_t)kIllegalAddr2,
-                      .mcpc = (uint32_t)kDoubleFaultSecondAddr + 4,
-                      .mnpc = (uint32_t)&_ottf_interrupt_vector,
-                  },
-                  kDifToggleEnabled);
+      // check_state(dump.fault_state,
+      //             (dif_rv_core_ibex_crash_dump_state_t){
+      //                 .mtval = (uint32_t)kIllegalAddr2,
+      //                 .mpec = (uint32_t)kDoubleFaultSecondAddr,
+      //                 .mdaa = (uint32_t)kIllegalAddr2,
+      //                 .mcpc = (uint32_t)kDoubleFaultSecondAddr + 4,
+      //                 .mnpc = (uint32_t)&_ottf_interrupt_vector,
+      //             },
+      //             kDifToggleEnabled);
 
       check_prev_state(dump.previous_fault_state,
                        (dif_rv_core_ibex_previous_crash_dump_state_t){

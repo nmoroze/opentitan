@@ -3439,6 +3439,72 @@ opentitan_test(
 )
 
 opentitan_test(
+    name = "rstmgr_cpu_info_test_test_unlocked0",
+    srcs = ["//sw/device/silicon_creator/manuf/tests:idle_functest.c"],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_cw310_sival": None,
+        "//hw/top_earlgrey:silicon_creator": None,
+    },
+    fpga = fpga_params(
+        binaries = {
+            ":rstmgr_cpu_info_test_sram": "sram_program",
+        },
+        needs_jtag = True,
+        otp = "//sw/device/silicon_creator/manuf/tests:otp_img_rom_exec_disabled_test_unlocked0",
+        test_cmd = "--elf={sram_program}",
+        test_harness = "//sw/host/tests/chip/rv_core_ibex_epmp",
+    ),
+    silicon = silicon_params(
+        binaries = {
+            ":rstmgr_cpu_info_test_sram": "sram_program",
+        },
+        needs_jtag = True,
+        tags = ["manual"],
+        test_cmd = "--elf={sram_program}",
+        test_harness = "//sw/host/tests/chip/rv_core_ibex_epmp",
+    ),
+    deps = [
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/testing/test_framework:check",
+        "//sw/device/lib/testing/test_framework:ottf_main",
+    ],
+)
+
+opentitan_binary(
+    name = "rstmgr_cpu_info_test_sram",
+    testonly = True,
+    srcs = ["rstmgr_cpu_info_test.c"],
+    exec_env = {
+        "//hw/top_earlgrey:fpga_cw310_rom_with_fake_keys": None,
+    },
+    kind = "ram",
+    linker_script = "//sw/device/silicon_creator/manuf/lib:sram_program_linker_script",
+    deps = [
+        "//hw/top_earlgrey/sw/autogen:top_earlgrey",
+        "//sw/device/lib/base:abs_mmio",
+        "//sw/device/lib/base:macros",
+        "//sw/device/lib/base:mmio",
+        "//sw/device/lib/dif:pwrmgr",
+        "//sw/device/lib/dif:rstmgr",
+        "//sw/device/lib/dif:rv_core_ibex",
+        "//sw/device/lib/runtime:log",
+        "//sw/device/lib/runtime:print",
+        "//sw/device/lib/testing:aon_timer_testutils",
+        "//sw/device/lib/testing:rstmgr_testutils",
+        "//sw/device/lib/testing:rv_core_ibex_testutils",
+        #"//sw/device/lib/testing/test_framework:ottf_main",
+        "//sw/device/lib/testing/test_framework:check",
+        "//sw/device/lib/testing/test_framework:ottf_test_config",
+        "//sw/device/lib/testing/test_framework:status",
+        "//sw/device/silicon_creator/lib/base:chip",
+        "//sw/device/silicon_creator/manuf/lib:sram_start",
+        "//sw/device/lib/dif:uart",
+        "//sw/device/lib/dif:pinmux",
+        "//sw/device/lib/testing:pinmux_testutils",
+    ],
+)
+
+opentitan_test(
     name = "rstmgr_sw_req_test",
     srcs = ["rstmgr_sw_req_test.c"],
     exec_env = dicts.add(
