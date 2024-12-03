@@ -33,7 +33,7 @@ impl<'a> SpiConsoleDevice<'a> {
         let mut flash = SpiFlash {
             ..Default::default()
         };
-        flash.set_address_mode(spi, AddressMode::Mode3b)?;
+        // flash.set_address_mode(spi, AddressMode::Mode3b)?;
         Ok(Self {
             spi,
             flash,
